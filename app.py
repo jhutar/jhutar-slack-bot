@@ -11,12 +11,48 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
 
 from flask import Flask, make_response
+import flask_sqlalchemy
+import flask_migrate
+
+from sqlalchemy.sql import func
 
 
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
 
 flask_app = Flask(__name__)
+
+flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/database.db'
+flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+flask_app_db = flask_sqlalchemy.SQLAlchemy(flask_app)
+
+flask_app_migrate = flask_migrate.Migrate(flask_app, flask_app_db)
+
+class ThreadsToFollow(flask_app_db.Model):
+    thread_ts = flask_app_db.Column(flask_app_db.Float, primary_key=True)
+    created_at = flask_app_db.Column(flask_app_db.DateTime(timezone=True), server_default=func.now())
+
+    def age(self):
+        now = time.time()
+        return now - self.thread_ts
+
+    def __repr__(self):
+        return f'<ThreadsToFollow {self.thread_ts}>'
+
+class Message(flask_app_db.Model):
+    ts = flask_app_db.Column(flask_app_db.Float, primary_key=True)
+    user = flask_app_db.Column(flask_app_db.String)
+    message = flask_app_db.Column(flask_app_db.Text)
+    thread_ts = flask_app_db.Column(flask_app_db.Float)
+    created_at = flask_app_db.Column(flask_app_db.DateTime(timezone=True), server_default=func.now())
+
+    def age(self):
+        now = time.time()
+        return now - self.ts
+
+    def __repr__(self):
+        return f'<Message {self.ts} from {self.user}>'
 
 parent_list = set()   # List of "thread_ts" values for "share your status" messages where we care about child messages
 parent_max_age = 3600 * 24 * 7   # Drop parent messages from the list after 7 days

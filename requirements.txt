@@ -1,2 +1,5 @@
 flask
+flask-migrate
+flask_sqlalchemy
+psycopg2-binary
 slack-bolt
