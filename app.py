@@ -10,8 +10,13 @@ from slack_bolt import App, BoltContext
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk import WebClient
 
+from flask import Flask, make_response
+
 
 app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
+
+flask_app = Flask(__name__)
 
 parent_list = set()   # List of "thread_ts" values for "share your status" messages where we care about child messages
 parent_max_age = 3600 * 24 * 7   # Drop parent messages from the list after 7 days
@@ -47,5 +52,15 @@ def message_hello(body: dict, client: WebClient, context: BoltContext, logger: l
             ###    name="eyes",
             ###)
 
+@flask_app.route("/health", methods=["GET"])
+def slack_events():
+    if (
+        socket_mode_handler.client is not None
+        and socket_mode_handler.client.is_connected()
+    ):
+        return make_response("OK", 200)
+    return make_response("The Socket Mode client is inactive", 503)
+
 if __name__ == "__main__":
-    SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"]).start()
+    socket_mode_handler.connect()  # does not block the current thread
+    flask_app.run(port=8080)
