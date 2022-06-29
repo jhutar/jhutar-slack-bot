@@ -25,12 +25,12 @@ from sqlalchemy.sql import func
 
 logging.basicConfig(level=logging.DEBUG)
 
-app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
+app = App(token=os.environ["SLACK_BOT_TOKEN"])
 socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
 
 flask_app = flask.Flask(__name__)
 
-flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:////tmp/database.db'
+flask_app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
 flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 flask_app_db = flask_sqlalchemy.SQLAlchemy(flask_app)

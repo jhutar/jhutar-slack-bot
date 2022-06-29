@@ -12,5 +12,6 @@ Installation:
 
 Environment:
 
+    export SQLALCHEMY_DATABASE_URI='sqlite:////tmp/database.db'
     export SLACK_BOT_TOKEN=xoxb-...
     export SLACK_APP_TOKEN=xapp-...
