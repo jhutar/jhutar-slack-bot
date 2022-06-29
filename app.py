@@ -38,10 +38,18 @@ flask_app_db = flask_sqlalchemy.SQLAlchemy(flask_app)
 flask_app_migrate = flask_migrate.Migrate(flask_app, flask_app_db)
 
 
+##########
+# Params
+##########
+
 parent_max_age = 3600 * 24 * 7   # Drop parent messages from the list after 7 days
 parent_regexp = re.compile(r'^Reminder: Hello')   # Regexp to determine if the message is "share your status" one
 child_regexp = re.compile(r'^[Dd]one')   # Regexp to determine if the message contains status
 
+
+##########
+# DB Models
+##########
 
 class ThreadsToFollow(flask_app_db.Model):
     thread_ts = flask_app_db.Column(flask_app_db.Float, primary_key=True)
@@ -84,6 +92,10 @@ class Message(flask_app_db.Model):
     def __repr__(self):
         return f'<Message {self.ts} from {self.user}>'
 
+
+##########
+# Slack
+##########
 
 @app.middleware
 def set_db_object(context, body, next):
@@ -135,6 +147,10 @@ def message_hello(body: dict, client: WebClient, context: BoltContext, logger: l
                 )
 
 
+##########
+# Flask
+##########
+
 def _serialize(query):
     if 'page' in flask.request.args:
         page = int(flask.request.args['page'])
@@ -171,6 +187,10 @@ def slack_events():
         return flask.make_response("OK", 200)
     return flask.make_response("The Socket Mode client is inactive", 503)
 
+
+##########
+# Main
+##########
 
 if __name__ == "__main__":
     socket_mode_handler.connect()  # does not block the current thread
