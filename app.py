@@ -29,7 +29,6 @@ app = App(token=os.environ["SLACK_BOT_TOKEN"])
 socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
 
 flask_app = flask.Flask(__name__)
-flask_app.run(host="0.0.0.0", port=8080)
 
 flask_app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
 flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -195,4 +194,4 @@ def slack_events():
 
 if __name__ == "__main__":
     socket_mode_handler.connect()  # does not block the current thread
-    flask_app.run(port=8080)
+    flask_app.run(host="0.0.0.0", port=8080)
