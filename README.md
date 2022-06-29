@@ -9,3 +9,8 @@ Installation:
     source venv/bin/activate
     pip install -U pip
     pip install -r requirements.txt
+
+Environment:
+
+    export SLACK_BOT_TOKEN=xoxb-...
+    export SLACK_APP_TOKEN=xapp-...
