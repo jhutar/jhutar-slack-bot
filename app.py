@@ -29,6 +29,7 @@ app = App(token=os.environ["SLACK_BOT_TOKEN"])
 socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
 
 flask_app = flask.Flask(__name__)
+flask_app.run(host="0.0.0.0")
 
 flask_app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
 flask_app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
