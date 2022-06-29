@@ -8,7 +8,7 @@ ENV SQLALCHEMY_DATABASE_URI=sqlite:////tmp/database.db
 ENV SLACK_BOT_TOKEN=xoxb-...
 ENV SLACK_APP_TOKEN=xapp-...
 
-EXPOSE 8080
+EXPOSE 8080/tcp
 
 RUN INSTALL_PKGS="python3" \
   && yum -y install $INSTALL_PKGS \
