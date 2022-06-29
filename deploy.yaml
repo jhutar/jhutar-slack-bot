@@ -1,0 +1,108 @@
+---
+apiVersion: apps.openshift.io/v1
+kind: DeploymentConfig
+metadata:
+  name: jhutar-slack-bot
+spec:
+  selector:
+    app: jhutar-slack-bot
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jhutar-slack-bot
+    spec:
+      initContainers:
+        - name: init-jhutar-slack-bot
+          image: quay.io/rhcloudperfscale/jhutar-slack-bot:latest
+          imagePullPolicy: Always
+          command:
+            - flask
+            - db
+            - upgrade
+          env:
+            - name: SQLALCHEMY_DATABASE_URI
+              value: 'sqlite:////usr/src/app/data/db.sqlite'
+          volumeMounts:
+            - mountPath: /usr/src/app/data/
+              name: jhutar-slack-bot-pvc
+      containers:
+        - name: jhutar-slack-bot
+          image: quay.io/rhcloudperfscale/jhutar-slack-bot:latest
+          imagePullPolicy: Always
+          env:
+            - name: SQLALCHEMY_DATABASE_URI
+              value: 'sqlite:////usr/src/app/data/db.sqlite'
+            - name: SLACK_BOT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: SLACK_BOT_TOKEN
+                  name: jhutar-slack-bot-secret
+            - name: SLACK_APP_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  key: SLACK_APP_TOKEN
+                  name: jhutar-slack-bot-secret
+          resources:
+            requests:
+              memory: 256Mi
+              cpu: 250m
+            limits:
+              memory: 256Mi
+              cpu: 250m
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - mountPath: /usr/src/app/data/
+              name: jhutar-slack-bot-pvc
+      volumes:
+        - name: jhutar-slack-bot-pvc
+          persistentVolumeClaim:
+            claimName: jhutar-slack-bot-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jhutar-slack-bot-service
+spec:
+  selector:
+    app: jhutar-slack-bot
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: jhutar-slack-bot-route
+spec:
+  path: /
+  to:
+    kind: Service
+    name: jhutar-slack-bot-service
+  port:
+    targetPort: 8080
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: jhutar-slack-bot-secret
+data:
+  SLACK_BOT_TOKEN: VE9ETwo=
+  SLACK_APP_TOKEN: VE9ETwo=
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jhutar-slack-bot-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: dynamic-nfs
+  volumeMode: Filesystem
+...
