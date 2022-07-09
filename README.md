@@ -5,6 +5,9 @@ The bot is supposed to be part of #team-perfscale and there it waits for `Remind
 
 Good guide I have followed: <https://slack.dev/bolt-python/tutorial/getting-started>
 
+Development
+-----------
+
 Installation:
 
     python -m venv venv
@@ -15,10 +18,13 @@ Installation:
 Running locally:
 
     export SQLALCHEMY_DATABASE_URI='sqlite:////tmp/database.db'
-    flask db upgrade
     export SLACK_BOT_TOKEN=xoxb-...
     export SLACK_APP_TOKEN=xapp-...
+    flask db upgrade
     ./app.py
+
+Running it
+----------
 
 Building container:
 
@@ -32,5 +38,10 @@ Running container locally:
 
 Running in OpenShift:
 
-    oc -n jenkins-csb-perf apply -f deploy.yaml
+    oc -n <namespace> apply -f deploy.yaml
     (and edit secrets in secret/jhutar-slack-bot-secret)
+
+And rolling out latest image when running it in OpenShift:
+
+    oc -n <namespace> rollout latest DeploymentConfig/jhutar-slack-bot
+    oc -n <namespace> rollout status DeploymentConfig/jhutar-slack-bot
