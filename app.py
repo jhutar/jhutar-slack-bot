@@ -103,6 +103,17 @@ def set_db_object(context, body, next):
     next()
 
 
+@app.event("app_mention")
+def event_test(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
+    channel_id = body["event"]["channel"]
+    message_ts = body["event"]["ts"]
+    result = client.chat_postMessage(
+        channel=channel_id,
+        thread_ts=message_ts,
+        text="Hello world!",
+    )
+
+
 @app.event("message")
 def message_hello(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
     if "thread_ts" not in body["event"]:
