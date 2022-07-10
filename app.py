@@ -114,48 +114,91 @@ def event_test(body: dict, client: WebClient, context: BoltContext, logger: logg
     )
 
 
-@app.event("message")
-def message_hello(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
-    if "thread_ts" not in body["event"]:
-        logger.info(f"Processing parent message {body}")
+def message_new_parent(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
+    message_text = body["event"]["text"]
+    message_ts = body["event"]["ts"]
 
-        if re.search(parent_regexp, body["event"]["text"]):
-            t = ThreadsToFollow()
-            t.thread_ts = float(body["event"]["ts"])
-            context["db"].session.add(t)
-            context["db"].session.commit()
-            logger.info("Added parent message as it matches regexp {body}")
+    if re.search(parent_regexp, message_text):
+        logger.info(f"Processing new parent message {body}")
 
-            # Remove too old threads
-            parent_count_before = ThreadsToFollow.query.count()
-            now = time.time()
-            parent_limit = now - parent_max_age
-            ThreadsToFollow.query.filter(ThreadsToFollow.thread_ts < parent_limit).delete()
-            context["db"].session.commit()
-            parent_count_after = ThreadsToFollow.query.count()
-            if parent_count_before != parent_count_after:
-                logging.info(f"Expired some parent messages. Before we had {parent_count_before} and now we have {parent_count_after} of them")
+        t = ThreadsToFollow()
+        t.thread_ts = float(message_ts)
+        context["db"].session.add(t)
+        context["db"].session.commit()
 
-    if "thread_ts" in body["event"]:
+        # Remove too old threads
+        parent_count_before = ThreadsToFollow.query.count()
+        now = time.time()
+        parent_limit = now - parent_max_age
+        ThreadsToFollow.query.filter(ThreadsToFollow.thread_ts < parent_limit).delete()
+        context["db"].session.commit()
+        parent_count_after = ThreadsToFollow.query.count()
+        if parent_count_before != parent_count_after:
+            logging.info(f"Expired some parent messages. Before we had {parent_count_before} and now we have {parent_count_after} of them")
+
+
+def handle_message_child(db, message_text, message_ts, message_thread_ts, message_user):
+    if re.search(child_regexp, message_text):
         parent_list = [i[0] for i in ThreadsToFollow.query.with_entities(ThreadsToFollow.thread_ts).all()]
+        if float(message_thread_ts) in parent_list:
+            m_exists = Message.query.filter_by(ts=float(message_ts)).first()
 
-        if float(body["event"]["thread_ts"]) in parent_list:
-            if re.search(child_regexp, body["event"]["text"]):
-                logger.info(f"Yay, we have a status message {body}")
-
+            if m_exists is None:
                 m = Message()
-                m.ts = float(body["event"]["ts"])
-                m.user = body["event"]["user"]
-                m.message = body["event"]["text"]
-                m.thread_ts = float(body["event"]["thread_ts"])
-                context["db"].session.add(m)
-                context["db"].session.commit()
+                m.ts = float(message_ts)
+                m.user = message_user
+                m.message = message_text
+                m.thread_ts = float(message_thread_ts)
+            else:
+                m = m_exists
+                m.message = message_text
 
-                client.reactions_add(
-                    channel=context.channel_id,
-                    timestamp=body["event"]["ts"],
-                    name="eyes",
-                )
+            db.session.add(m)
+            db.session.commit()
+
+            return True
+
+
+def message_new_child(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
+    message_text = body["event"]["text"]
+    message_ts = body["event"]["ts"]
+    message_thread_ts = body["event"]["thread_ts"]
+    message_user = body["event"]["user"]
+
+    if handle_message_child(context["db"], message_text, message_ts, message_thread_ts, message_user):
+        logger.info(f"Added message {message_ts}")
+
+        client.reactions_add(
+            channel=context.channel_id,
+            timestamp=message_ts,
+            name="eyes",
+        )
+
+
+def message_changed_child(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
+    message_text = body["event"]["message"]["text"]
+    message_ts = body["event"]["message"]["ts"]
+    message_thread_ts = body["event"]["message"]["thread_ts"]
+    message_user = body["event"]["message"]["user"]
+
+    if handle_message_child(context["db"], message_text, message_ts, message_thread_ts, message_user):
+        logger.info(f"Changed message {message_ts}")
+
+
+@app.event("message")
+def message(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
+    if "subtype" not in body["event"]:   # this is a new message
+        if "thread_ts" not in body["event"]:   # this is a new parent message
+            message_new_parent(body, client, context, logger)
+        else:   # this is a new child message
+            message_new_child(body, client, context, logger)
+
+    elif "subtype" in body["event"] and body["event"]["subtype"] == "message_changed":   # this is an updated message
+        if "thread_ts" in body["event"]["message"]:   # this is an updated child message
+            message_changed_child(body, client, context, logger)
+
+    else:
+        logger.info(f"Unknown message {body}")
 
 
 ##########
