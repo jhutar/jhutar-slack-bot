@@ -5,6 +5,22 @@ The bot is supposed to be part of #team-perfscale and there it waits for `Remind
 
 Good guide I have followed: <https://slack.dev/bolt-python/tutorial/getting-started>
 
+Slack app setting
+-----------------
+
+This is what I use now, although I think list of permissions can be
+trimmed down:
+
+* Socket Mode: enabled
+* OAuth & Permissions -> Scopes:
+    * `app_mentions:read` - View messages that directly mention `@jhutar_bot` in conversations that the app is in
+    * `channels:history` - View messages and other content in public channels that jhutar-bot has been added to
+    * `chat:write` - Send messages as `@jhutar_bot`
+    * `groups:history` - View messages and other content in private channels that jhutar-bot has been added to
+    * `im:history` - View messages and other content in direct messages that jhutar-bot has been added to
+    * `mpim:history` - View messages and other content in group direct messages that jhutar-bot has been added to
+    * `reactions:write` - Add and edit emoji reactions
+
 Development
 -----------
 
