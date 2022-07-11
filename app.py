@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import contextlib
 import logging
 import os
 import re
@@ -97,6 +98,19 @@ class Message(flask_app_db.Model):
 # Slack
 ##########
 
+@contextlib.contextmanager
+def session_scope(db):
+    """Provide a transactional scope around a series of operations."""
+    session = db.session
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
 @app.middleware
 def set_db_object(context, body, next):
     context["db"] = flask_app_db
@@ -121,42 +135,41 @@ def message_new_parent(body: dict, client: WebClient, context: BoltContext, logg
     if re.search(parent_regexp, message_text):
         logger.info(f"Processing new parent message {body}")
 
-        t = ThreadsToFollow()
-        t.thread_ts = float(message_ts)
-        context["db"].session.add(t)
-        context["db"].session.commit()
+        with session_scope(context["db"]) as session:
+            t = ThreadsToFollow()
+            t.thread_ts = float(message_ts)
+            session.add(t)
 
-        # Remove too old threads
-        parent_count_before = ThreadsToFollow.query.count()
-        now = time.time()
-        parent_limit = now - parent_max_age
-        ThreadsToFollow.query.filter(ThreadsToFollow.thread_ts < parent_limit).delete()
-        context["db"].session.commit()
-        parent_count_after = ThreadsToFollow.query.count()
-        if parent_count_before != parent_count_after:
-            logging.info(f"Expired some parent messages. Before we had {parent_count_before} and now we have {parent_count_after} of them")
+            # Remove too old threads
+            parent_count_before = ThreadsToFollow.query.count()
+            now = time.time()
+            parent_limit = now - parent_max_age
+            ThreadsToFollow.query.filter(ThreadsToFollow.thread_ts < parent_limit).delete()
+            parent_count_after = ThreadsToFollow.query.count()
+            if parent_count_before != parent_count_after:
+                logging.info(f"Expired some parent messages. Before we had {parent_count_before} and now we have {parent_count_after} of them")
 
 
 def handle_message_child(db, message_text, message_ts, message_thread_ts, message_user):
     if re.search(child_regexp, message_text):
-        parent_list = [i[0] for i in ThreadsToFollow.query.with_entities(ThreadsToFollow.thread_ts).all()]
-        if float(message_thread_ts) in parent_list:
-            m_exists = Message.query.filter_by(ts=float(message_ts)).first()
+        with session_scope(db) as session:
+            parent_list = [i[0] for i in ThreadsToFollow.query.with_entities(ThreadsToFollow.thread_ts).all()]
+            if float(message_thread_ts) in parent_list:
+                m_exists = Message.query.filter_by(ts=float(message_ts)).first()
 
-            if m_exists is None:
-                m = Message()
-                m.ts = float(message_ts)
-                m.user = message_user
-                m.message = message_text
-                m.thread_ts = float(message_thread_ts)
-            else:
-                m = m_exists
-                m.message = message_text
+                if m_exists is None:
+                    m = Message()
+                    m.ts = float(message_ts)
+                    m.user = message_user
+                    m.message = message_text
+                    m.thread_ts = float(message_thread_ts)
+                else:
+                    m = m_exists
+                    m.message = message_text
 
-            db.session.add(m)
-            db.session.commit()
+                db.session.add(m)
 
-            return True
+                return True
 
 
 def message_new_child(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
