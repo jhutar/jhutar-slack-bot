@@ -45,7 +45,7 @@ flask_app_migrate = flask_migrate.Migrate(flask_app, flask_app_db)
 
 parent_max_age = 3600 * 24 * 7   # Drop parent messages from the list after 7 days
 parent_regexp = re.compile(r'^Reminder: Hello')   # Regexp to determine if the message is "share your status" one
-child_regexp = re.compile(r'^[Dd]one')   # Regexp to determine if the message contains status
+child_regexp = re.compile(r'^([Dd]one|[Bb]locker)')   # Regexp to determine if the message contains status
 
 
 ##########
