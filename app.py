@@ -150,9 +150,9 @@ def message_new_parent(body: dict, client: WebClient, context: BoltContext, logg
                 logging.info(f"Expired some parent messages. Before we had {parent_count_before} and now we have {parent_count_after} of them")
 
 
-def handle_message_child(db, message_text, message_ts, message_thread_ts, message_user):
+def handle_message_child(context, message_text, message_ts, message_thread_ts, message_user, client):
     if re.search(child_regexp, message_text):
-        with session_scope(db) as session:
+        with session_scope(context["db"]) as session:
             parent_list = [i[0] for i in ThreadsToFollow.query.with_entities(ThreadsToFollow.thread_ts).all()]
             if float(message_thread_ts) in parent_list:
                 m_exists = Message.query.filter_by(ts=float(message_ts)).first()
@@ -167,7 +167,14 @@ def handle_message_child(db, message_text, message_ts, message_thread_ts, messag
                     m = m_exists
                     m.message = message_text
 
-                db.session.add(m)
+                context["db"].session.add(m)
+
+                if m_exists is None:
+                    client.reactions_add(
+                        channel=context.channel_id,
+                        timestamp=message_ts,
+                        name="eyes",
+                    )
 
                 return True
 
@@ -178,14 +185,8 @@ def message_new_child(body: dict, client: WebClient, context: BoltContext, logge
     message_thread_ts = body["event"]["thread_ts"]
     message_user = body["event"]["user"]
 
-    if handle_message_child(context["db"], message_text, message_ts, message_thread_ts, message_user):
+    if handle_message_child(context, message_text, message_ts, message_thread_ts, message_user, client):
         logger.info(f"Added message {message_ts}")
-
-        client.reactions_add(
-            channel=context.channel_id,
-            timestamp=message_ts,
-            name="eyes",
-        )
 
 
 def message_changed_child(body: dict, client: WebClient, context: BoltContext, logger: logging.Logger):
@@ -194,7 +195,7 @@ def message_changed_child(body: dict, client: WebClient, context: BoltContext, l
     message_thread_ts = body["event"]["message"]["thread_ts"]
     message_user = body["event"]["message"]["user"]
 
-    if handle_message_child(context["db"], message_text, message_ts, message_thread_ts, message_user):
+    if handle_message_child(context, message_text, message_ts, message_thread_ts, message_user, client):
         logger.info(f"Changed message {message_ts}")
 
 
