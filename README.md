@@ -1,7 +1,7 @@
 Bot to record scrum status messages from MBU Perf&Scale team
 ============================================================
 
-The bot is supposed to be part of #team-perfscale and there it waits for `Reminder: Hello @perfscale ! share your daily scrum update.` messages. Once there is some message like that, bot waits for messages in that thread and if they start with `Done`, they are recorded as a status message.
+The bot is supposed to be part of #team-perfscale-general and there it waits for `Reminder: Hello @perfscale ! share your daily scrum update.` messages. Once there is some message like that, bot waits for messages in that thread and if they start with `Done`, they are recorded as a status message.
 
 Good guide I have followed: <https://slack.dev/bolt-python/tutorial/getting-started>
 
