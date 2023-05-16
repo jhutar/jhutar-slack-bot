@@ -61,3 +61,8 @@ And rolling out latest image when running it in OpenShift:
 
     oc -n <namespace> rollout latest DeploymentConfig/jhutar-slack-bot
     oc -n <namespace> rollout status DeploymentConfig/jhutar-slack-bot
+
+Data retention policy
+---------------------
+
+Messages are stored indefinetely.
